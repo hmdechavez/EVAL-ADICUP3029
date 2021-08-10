@@ -1,4 +1,4 @@
-# File: CN0548_simple_plot.py
+# File: CN0548_simple_plot_v3.py
 # Description: CN0548 data logging and real-time plot
 # Author: Harvey De Chavez (harveyjohn.dechavez@analog.com)
 #
@@ -688,7 +688,6 @@ if enable_plot:
         plt.title(title_text, fontweight="bold")
         plt.subplots_adjust(bottom=0.30)
 
-    print(new_record)
     record = open("record.txt","w")
     for i in range(7):
         record.write(str(new_record[i+1])+"\n")
@@ -719,5 +718,3 @@ else:
             output.close()
 
 del ad7799
-
-input("Press 'enter' key to exit program")
