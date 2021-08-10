@@ -1,4 +1,4 @@
-# File: CN0548_simple_plot_v3.py
+# File: CN0548_simple_plot.py
 # Description: CN0548 data logging and real-time plot
 # Author: Harvey De Chavez (harveyjohn.dechavez@analog.com)
 #
@@ -288,10 +288,11 @@ try:
         new = new + isint(rec_value[1],1,5)
         new = new + isint(rec_value[2],1,2)
         new = new + is_y_or_n(rec_value[3])
-        new = new + is_y_or_n(rec_value[4])
-        if new == 0 and (rec_value[4] == 'Y' or rec_value[4] == 'y'):
+        new = new + isint(rec_value[4],1,5)
+        new = new + is_y_or_n(rec_value[5])
+        if new == 0 and (rec_value[5] == 'Y' or rec_value[5] == 'y'):
             new = new + isint(rec_value[6],5,'x')
-        new = new + isint(rec_value[5],1,5)
+        
     
 except:
     print("No session record found. Starting new session...\n\n")
@@ -333,12 +334,16 @@ if new == 0:
     else:
         print("Data logging disabled")
     
-    if rec_value[4] == 'Y' or rec_value == 'y':
+    if rec_value[4] == '1':
+        print("Data sampling rate: " + rec_value[4] + " sample per second")
+    else:
+        print("Data sampling rate: " + rec_value[4] + " samples per second")
+    
+    if rec_value[5] == 'Y' or rec_value == 'y':
         print("Plot enabled, latest " + rec_value[6] + " samples are displayed")
     else:
         print("Plot disabled")
     
-    print("Data sampling rate: " + rec_value[5] + " samples per second")
     print("\nUse same setting as previous session? (1 or 2)\n\t(1) Yes\n\t(2) No")
     while True:
         placeholder = input(">> ")
@@ -363,6 +368,7 @@ new_record = ["DO NOT EDIT THE CONTENTS OF THIS FILE"]
 
 v_text = "Voltage measurement: "
 if new != 0:
+    print("\nCreating jumper map... Do not close jumper window")
     draw_jumpers()
     print("\nThe following prompts will help you setup the jumper configuration of the CN0548 board depending on your expected inputs. A map of the board jumpers should have appeared in another window. This map will be updated as you provide responses to the different prompts.\n\n")
 
