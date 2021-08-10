@@ -1,4 +1,4 @@
-# File: CN0548_simple_plot_v3.py
+# File: CN0548_simple_plot.py
 # Description: CN0548 data logging and real-time plot
 # Author: Harvey De Chavez (harveyjohn.dechavez@analog.com)
 #
