@@ -36,6 +36,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import turtle
+unit = 24
+x_init = -4 * unit
+y_init = 6 * unit
+style = ('Arial', 10)
+style2 = ('Arial', 20, 'bold')
 
 def draw_rec(x,y,x_len,y_len,fill):
     turtle.setpos(x,y)
@@ -51,12 +56,6 @@ def draw_rec(x,y,x_len,y_len,fill):
     if fill == 1:
         turtle.end_fill()
     turtle.up()
-
-unit = 24
-x_init = -4 * unit
-y_init = 6 * unit
-style = ('Arial', 10)
-style2 = ('Arial', 20, 'bold')
 
 def draw_jumpers():
     jumper = ['P1','P3','P10','P8','P9','P11','P13','P14','P12','P7']
@@ -97,45 +96,46 @@ def draw_jumpers():
         turtle.setpos(x_init-1.5*unit+j*11*unit,y_init-13*unit)
         turtle.write(jumper[j+8],font=style,align='center')
 
-def gain_config(p1,p3,p10,p8,p9,p11):
-    if p1==1:
+def gain_config(jumper):
+    #P1
+    if jumper[0]==1:
         draw_rec(x_init+4,y_init-4-unit,40,16,1)
-    elif p1==2:
+    elif jumper[0]==2:
         draw_rec(x_init+4,y_init-4,40,16,1)
     else:
         draw_rec(x_init+4+unit,y_init-4,16,40,1)
-
-    if p3==1:
+    #P3
+    if jumper[1]==1:
         draw_rec(x_init+4,y_init-4-5*unit,40,16,1)
-    elif p3==2:
+    elif jumper[1]==2:
         draw_rec(x_init+4,y_init-4-4*unit,40,16,1)
     else:
         draw_rec(x_init+4+unit,y_init-4-4*unit,16,40,1)
-
-    if p10==1:
+    #P10
+    if jumper[2]==1:
         draw_rec(x_init+4,y_init-4-9*unit,40,16,1)
-    elif p10==2:
+    elif jumper[2]==2:
         draw_rec(x_init+4,y_init-4-8*unit,40,16,1)
     else:
         draw_rec(x_init+4+unit,y_init-4-8*unit,16,40,1)
-
-    if p8==1:
+    #P8
+    if jumper[3]==1:
         draw_rec(x_init+4+6*unit,y_init-4-1*unit,40,16,1)
-    elif p8==2:
+    elif jumper[3]==2:
         draw_rec(x_init+4+6*unit,y_init-4-2*unit,40,16,1)
     else:
         draw_rec(x_init+4+6*unit,y_init-4,16,40,1)
-    
-    if p9==1:
+    #P9
+    if jumper[4]==1:
         draw_rec(x_init+4+6*unit,y_init-4-5*unit,40,16,1)
-    elif p9==2:
+    elif jumper[4]==2:
         draw_rec(x_init+4+6*unit,y_init-4-6*unit,40,16,1)
     else:
         draw_rec(x_init+4+6*unit,y_init-4-4*unit,16,40,1)
-    
-    if p11==1:
+    #P11
+    if jumper[5]==1:
         draw_rec(x_init+4+6*unit,y_init-4-9*unit,40,16,1)
-    elif p11==2:
+    elif jumper[5]==2:
         draw_rec(x_init+4+6*unit,y_init-4-10*unit,40,16,1)
     else:
         draw_rec(x_init+4+6*unit,y_init-4-8*unit,16,40,1)
@@ -173,36 +173,65 @@ def isint(x,lower,upper):
         return 2
 
 def input_int(text,lower,upper):
-    x = input(text)
-    if isint(x,lower,upper) == 0:
-        return int(x)
-    elif isint(x,lower,upper) == 1:
-        print("Please input a value within the given option range")
-        return 'x'
-    else:
-        print("Invalid response, the system is expecting an integer value within the range of options")
-        return 'x'
+    while True:
+        x = input(text)
+        if isint(x,lower,upper) == 0:
+            user_input = int(x)
+            break
+        elif isint(x,lower,upper) == 1:
+            print("Please input a value within the given option range")
+        else:
+            print("Invalid response, the system is expecting an integer value within the range of options")
+    return user_input
 
-# ----------------------------Program starts here------------------------------------------
+def compute_bounds(data):
+    span = max(data) - min(data)
+    if span != 0:
+        lower = min(data) - span/16
+        upper = max(data) + span/16
+    else:
+        lower = min(data) - 0.001
+        upper = max(data) + 0.001
+    bounds = [lower,upper]
+    return bounds
+            
+# ----- Program starts here -----
 
 print(" ------------------------------------------------------------------\n| EVAL-CN0548-ARDZ: Isolated High Current and High Voltage Sensing |\n ------------------------------------------------------------------\n\nGeneral Reminder:")
 print("\n  > Disconnect any input until the board is properly configured.\n\n  > Note the node polarities when using the unipolar and unidirectional modes.\n\n  > Do not use the board for inputs that exceed the set configuration.\n\n  > Disconnect any input attached to the board when changing jumper configurations.\n")
 input("\t\t\t\t\t\tPress the 'enter' key to proceed")
 print("Starting program...")
-new = 0
+
+import time
+from datetime import datetime
+from typing import List
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import adi
+
+new_session = 0
+rec_value = []
+new_record = ["Session Record:"]
+line_count = 0    
 error = 0
+retry = 0
+v_rating = { 11:"16V", 12:"20V", 13:"27V", 14:"40V", 15:"80V", 21:"+/-8V", 22:"+/-10V", 23:"+/-13.5V", 24:"+/-20V", 25:"+/-40V" }
+c_rating = { 1:"20A", 2:"+/-10A" }  
+v_gain = { 1:4, 2:5, 3:20/3, 4:10, 5:20}
+jumper = { 1:[3,3,1,3,3,2], 2:[3,1,3,3,2,1], 3:[2,3,1,1,3,2], 4:[1,3,3,2,1,1], 5:[3,2,1,3,1,2],}
+global ad7799
+
+# ----- Check session record -----
+
 try:
-    rec_value = []
-    line_count = 0
-    
     record = open("session_record.txt", "r")
     for line in record:
         line_count = line_count + 1
     record.close()
 
-    if line_count < 9:
+    if line_count < 10:
         print("Some contents of the session record file seem to have been removed.\nStarting new session...")
-        new = 1
+        new_session = 1
     else:
         line_count = 0
         record = open("session_record.txt", "r")
@@ -210,43 +239,33 @@ try:
             part = line.split('-')
             rec_value.append(part[0].strip())
             line_count = line_count + 1
-            if line_count == 9:
+            if line_count == 10:
                 break
         
-        error = error + isint(rec_value[1],1,2)
-        error = error + isint(rec_value[2],1,5)
-        error = error + isint(rec_value[3],1,2)
-        error = error + isint(rec_value[4],1,5)
-        error = error + isint(rec_value[5],1,2)
-        error = error + isint(rec_value[6],1,2)
+        error = error + isint(rec_value[1],1,2) + isint(rec_value[2],1,5) + isint(rec_value[3],1,2) + isint(rec_value[4],1,5) + isint(rec_value[5],1,2) + + isint(rec_value[6],1,2)
         if error == 0 and rec_value[6] == '1':
-            error = error + isint(rec_value[7],1,2)
+            error = error + isint(rec_value[7],1,2)         
             if error == 0 and rec_value[7] == '2':
                 error = error + isint(rec_value[8],5,'x')
         if error > 0:
-            new = 1
-        
+            new_session = 1
 except:
     print("No session record found. Starting new session...")
-    new = 1
+    new_session = 1
 
-v_rating = { 11:"16V", 12:"20V", 13:"27V", 14:"40V", 15:"80V", 21:"+/-8V", 22:"+/-10V", 23:"+/-13.5V", 24:"+/-20V", 25:"+/-40V" }
-c_rating = { 1:"20A", 2:"+/-10A" }  
+# ----- Session Record Detected -----
 
-if new == 0:
+if new_session == 0:
     print("\nSession record detected.\n")
     print("Maximum rating: " + v_rating[10*int(rec_value[1])+int(rec_value[2])] + " , " + c_rating[int(rec_value[3])])
-
     if rec_value[4] == '1':
         print("Data sampling rate: " + rec_value[4] + " sample per second")
     else:
         print("Data sampling rate: " + rec_value[4] + " samples per second")
-
     if rec_value[5] == '1':
         print("Data logging enabled")
     else:
         print("Data logging disabled")
-    
     if rec_value[6] == '1':
             if rec_value[7] == '1':
                 print("Plot enabled in tracking mode")
@@ -254,230 +273,128 @@ if new == 0:
                 print("Plot enabled in non-tracking mode, latest " + rec_value[8] + " samples are displayed")
     else:
         print("Plot disabled")
+    print("Serial port: " + rec_value[9])
     
     print("\nUse same setting as previous session? (1 or 2)\n\t(1) Yes\n\t(2) No")
-    while True:
-        response = input_int(">> ",1,2)
-        if response==1:
-            new = 0
-            break
-        elif response==2:
-            new = 1
-            break
-        
+    response = input_int(">> ",1,2)
+    if response==1:
+        new_session = 0
+        v_type = int(rec_value[1])
+        v_max = int(rec_value[2])
+        c_type = int(rec_value[3])
+        fs = int(rec_value[4])
+        log = int(rec_value[5])
+        en = int(rec_value[6])
+        if en == 1:
+            mode = int(rec_value[7])
+            if mode == 2:
+                samples = int(rec_value[8])
+
+    elif response==2:
+        new_session = 1     
 elif error > 0:
     print("Some contents of the session record file seem to have been modified and might cause program error.\nStarting new session...")
 
-new_record = ["Session Record:"]
+# ----- New Session -----
 
-if new != 0:
-    print("\nCreating jumper map...\nThis will take a few seconds, do not close the jumper window")
-    draw_jumpers()
-    print("\nThe following prompts will help you setup the jumper configuration of the CN0548 board depending on your expected inputs. A map of the board jumpers should have appeared in another window. This map will be updated as you provide responses to the different prompts.\n\n")
+if new_session == 1:
+    
+    print("\nA jumper map graphic will be generated upon answering the succeeding prompts. This will help you setup the jumper configuration of the CN0548 board.\n\n")
     print("----- Setting up the hardware for LT1997-2 -----\n\n-Step 1 of 2: Type of voltage measurement-\n\t(1) Unipolar: The board expects non-negative readings allowing it to measure a wider range of positive voltages. Software is configured to read from 0 to Vmax.\n\t(2) Bipolar: The board expects both positive and negative readings, effective range is divided equally. Software is configured to read from -Vmax/2 to Vmax/2.\n")
-while True:
-    if new != 0:
-        v_type = input_int("Type of measurement (1 or 2): ",1,2)
-    else:
-        v_type = int(rec_value[1])
+    v_type = input_int("Type of measurement (1 or 2): ",1,2)
+    new_record.append(str(v_type) + " - Unipolar | Bipolar")       
     
-    if v_type == 1:
-        if new != 0:
-            v_uni()
-        break
-    elif v_type == 2:
-        if new != 0:
-            v_bi()
-        break
-new_record.append(str(v_type) + " - Unipolar | Bipolar")
-
-if new != 0:
     print("\n\n-Step 2 of 2: Voltage Range-\nThe maximum voltage range is 80V but the board can be configured to a more refined voltage range in order to produce higher resolution readings. Select your desired Vmax:\n\t(1) 16V\n\t(2) 20V\n\t(3) 27V\n\t(4) 40V\n\t(5) 80V\n")
-while True:
-    if new != 0:
-        v_max = input_int("Range (1 to 5): ",1,5)
-    else:
-        v_max = int(rec_value[2])
+    v_max = input_int("Range (1 to 5): ",1,5)
+    new_record.append(str(v_max) + " - 16V | 20V | 27V | 40V | 80V")
     
-    if v_max == 1:
-        if new != 0:
-            gain_config(3,3,1,3,3,2)
-        v_gain = 0.004
-        break
-    elif v_max == 2:
-        if new != 0:
-            gain_config(3,1,3,3,2,1)    
-        v_gain = 0.005
-        break
-    elif v_max == 3:
-        if new != 0:
-            gain_config(2,3,1,1,3,2)
-        v_gain = (1/150)
-        break
-    elif v_max == 4:
-        if new != 0:
-            gain_config(1,3,3,2,1,1)
-        v_gain = 0.01
-        break
-    elif v_max == 5:
-        if new != 0:
-            gain_config(3,2,1,3,1,2)
-        v_gain = 0.02
-        break
-new_record.append(str(v_max) + " - 16V | 20V | 27V | 40V | 80V")
-
-if new != 0:
+    print("\n\n----- Setting up the hardware for AD8410 -----\n-Step 1 of 1: Type of measurement-\n\t(1) Unidirectional: The board expects positive current flow only. Board is configured to handle 0 to 20A.\n\t(2) Bidirectional: The board expects both positive and negative current flow. Board is configured to handle -10A to 10A.\n")
+    c_type = input_int("Type of current measurement (1 or 2): ",1,2)
+    new_record.append(str(c_type) + " - Unidirectional | Birectional")
+    
+    print("\nCreating jumper map... This will take a few seconds.")
+    draw_jumpers()
+    gain_config(jumper[v_max])
+    print("You may close the jumper map window if you have configured the board jumpers")
     if v_type == 1:
+        v_uni()
         v_text = "Voltage measurement: Unipolar   (Effective Range: 0 to " + v_rating[10*v_type+v_max] + " )"
-    else:
+    elif v_type == 2:
+        v_bi()
         v_text = "Voltage measurement: Bipolar   (Effective Range: " + v_rating[10*v_type+v_max] + " )"
+    if c_type == 1:
+        c_uni()
+        c_text = "Current measurement: Unidirectional      (Effective range: 0 to 20A)"
+    elif c_type == 2:
+        c_bi()
+        c_text = "Current measurement: Bidirectional      (Effective range: -10A to 10A)"
+
     turtle.setpos(0,190)
     turtle.write(v_text,font=('Arial',10,'bold'),align='center')
-
-i_gain = 5
-if new != 0:
-    print("\n\n----- Setting up the hardware for AD8410 -----\n-Step 1 of 1: Type of measurement-\n\t(1) Unidirectional: The board expects positive current flow only. Board is configured to handle 0 to 20A.\n\t(2) Bidirectional: The board expects both positive and negative current flow. Board is configured to handle -10A to 10A.\n")
-while True:
-    if new != 0:
-        c_type = input_int("Type of current measurement (1 or 2): ",1,2)
-    else:
-        c_type = int(rec_value[3])
-    if c_type == 1:
-        if new != 0:
-            c_uni()
-            c_text = "Current measurement: Unidirectional      (Effective range: 0 to 20A)"
-        break
-    elif c_type == 2:
-        if new != 0:
-            c_bi()
-            c_text = "Current measurement: Bidirectional      (Effective range: -10A to 10A)"
-        break
-new_record.append(str(c_type) + " - Unidirectional | Birectional")
-
-if new != 0:
     turtle.setpos(0,170)
     turtle.write(c_text,font=('Arial',10,'bold'),align='center')
-    print("\nYou may close the jumper map window if you have configured the board jumpers")
     turtle.setpos(0,-250)
     turtle.write("You may close this window if you have configured the board jumpers",font=('Arial',10,'bold'),align='center')
-    input("Press 'enter' key to proceed to connection setup and software configuration")
+    turtle.done()
+    
+    input("Press 'enter' key to begin configuring software parameters")
+    fs = input_int('\n---Software Configuration---\n\nSampling Rate: The rate at which data is collected from the board - affected by your machine specs.\nSamples per second (1-5): ',1,5)
+    new_record.append(str(fs) + " - samples per second (1-5)")
 
-import sys
-import time
-from datetime import datetime
-from typing import List
-import matplotlib.animation as animation
-import matplotlib.pyplot as plt
-import adi
-global ad7799
+    log = input_int('\nData Logging: Records all your measurements in a csv file.\nEnable data logging?\n\t(1) Yes\n\t(2) No\n>> ',1,2)
+    new_record.append(str(log) + " - Data logging enabled | Data logging disabled")
 
-while True:
-    if new != 0:
-        fs = input_int('\n---Software Configuration---\n\nSampling Rate: The rate at which data is collected from the board.\nSamples per second (1-5): ',1,5)
-    else:
-        fs = int(rec_value[4])
-    if fs >= 1 and fs <= 5:
-        break
-new_record.append(str(fs) + " - samples per second (1-5)")
+    en = input_int('\nPlot Window: A real-time plot of the board\'s IV readings.\nNote: Sampling rate can be affected if plot is enabled\n\nEnable plot?\n\t(1) Yes\n\t(2) No\n>> ',1,2)
+    new_record.append(str(en) + " - Plot enabled | Plot disabled")
 
-while True:
-    if new != 0:
-        log = input_int('\nData Logging: Records all your measurements in a csv file.\nEnable data logging?\n\t(1) Yes\n\t(2) No\n>> ',1,2)
-    else:
-        log = int(rec_value[5])
-    if log == 1 or log == 2:
-        break
-new_record.append(str(log) + " - Data logging enabled | Data logging disabled")
+# ----- File Creation for Data Logging -----
 
 if log == 1:
     dt_now = datetime.now()
     dt_format = dt_now.strftime("%d-%m-%Y_%H-%M")
     filename = 'CN0548_'+dt_format+'.csv'
-
-while True:
-    if new != 0:
-        en = input_int('\nPlot Window: A real-time plot of the board\'s IV readings.\nNote: Sampling rate can be affected if plot is enabled\n\nEnable plot?\n\t(1) Yes\n\t(2) No\n>> ',1,2)
-    else:
-        en = int(rec_value[6])
-    if en == 1 or en == 2:
-        break
-new_record.append(str(en) + " - Plot enabled | Plot disabled")
+    output = open(filename,'w')
+    output.write("Voltage Reading (V),Current Reading (mA)\n")
+    output.close()
 
 if en == 1:
-    enable_plot = True
-else:
-    enable_plot = False
-
-if enable_plot:
-    datalog = []
-    while True: 
-        if new != 0:
-            mode = input_int('\nPlot Mode:\n (1) Tracking: All data points will be displayesd in the plot\n (2) Non-tracking: Only the recent x samples will be displayed\n\n>> ',1,2)
-        else:
-            mode = int(rec_value[7])
-        if mode != 'x':
-            break    
+    if new_session == 1:
+        mode = input_int('\nPlot Mode:\n (1) Tracking: All data points will be displayesd in the plot\n (2) Non-tracking: Only the recent x samples will be displayed\n\n>> ',1,2)
     new_record.append(str(mode) + " - Tracking | Non-tracking")
     
+    if mode == 1:
+        new_record.append('x - samples to retain')
     if mode == 2:
-        while True: 
-            if new != 0:
-                samples = input_int('\nInput number of samples to retain within the plot (>=5).\nSamples to retain: ',5,'x')
-            else:
-                samples = int(rec_value[8])
-            if samples != 'x':
-                break
+        if new_session == 1:
+            samples = input_int('\nInput number of samples to retain within the plot (>=5).\nSamples to retain: ',5,'x')
         new_record.append(str(samples) + " - samples to retain (>=5)")
 
-    # Create figure for plotting
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
+    fig, ax1 = plt.subplots()                                   # Create figure for plotting
+    ax2 = ax1.twinx()                                           # Same y-axis
     xs: List[float] = []
     ys: List[float] = []
-    if mode ==2:
+    if mode == 2:
         for i in range(samples):
             xs.append(0)
             ys.append(0)
-    
-    print("\n-Connection setup-\n")
-    while True:
-        port = input('Input Serial line (e.g. if ADICUP3029 is connected to COM7, input \'COM7\' )\nSerial line: ')
-        try:
-            context = "serial:" + port + ",115200"
-            ad7799 = adi.ad7799(uri=context)
-            input("\nCN0548 board detected.\nPress 'enter' key to start board operation\n")
-            break
-        except:
-            print("Port not found\n")
-    print("Voltage readings are in volts (V) while current readings are in milliamperes (mA).")
-    
 
-    def animate(i,volt, curr):      # function for animation
-        v_reading = v_gain*ad7799.channel[2].value # get new voltage reading
-        i_reading = i_gain*ad7799.channel[0].value # get new current reading
+    def animate(i,volt, curr):                                      # function for animation
+        v_reading = ad7799.channel[2].value*v_gain[v_max]/1000      # get new voltage reading
+        i_reading = ad7799.channel[0].value*20                      # get new current reading
         volt.append(v_reading)  
         curr.append(i_reading)  
         print('Voltage reading: ' + str(v_reading) + '\t\t\t' + 'Current reading: ' + str(i_reading))
         if log == 1:
-            datalog.append(str(v_reading) + ',' + str(i_reading)+'\n')
-              
-    # number of recent samples to be retained
-        if mode == 2:
+                output = open(filename,'a')
+                output.write(str(v_reading)+","+str(i_reading)+"\n")
+                output.close()  
+        if mode == 2:                                               # number of recent samples to be retained
             volt = volt[-samples:]
             curr = curr[-samples:]
-    #initialize/clear
-        lower = 0
-        upper = 0
-    # Plot config
-        ax1.clear()
-        span = max(volt) - min(volt)
-        if span != 0:
-            lower = min(volt) - span/16
-            upper = max(volt) + span/16
-        else:
-            lower = min(volt) - 0.001
-            upper = max(volt) + 0.001
-        ax1.set_ylim([lower,upper])
+        
+        ax1.clear()                                                 # Plot config
+        bounds = compute_bounds(volt)
+        ax1.set_ylim([bounds[0],bounds[1]])
         color = 'tab:orange'
         ax1.plot(volt, label="Voltage Reading", linewidth=2.0,color=color)
         if mode == 1:
@@ -489,75 +406,60 @@ if enable_plot:
         ax1.legend(bbox_to_anchor=[0.1, -0.1], ncol=2, loc="upper left", frameon=False)
         
         ax2.clear()
-        span = max(curr) - min(curr)
-        if span != 0:
-            lower = min(curr) - span/16
-            upper = max(curr) + span/16
-        else:
-            lower = min(curr) - 0.5
-            upper = max(curr) + 0.5
-        ax2.set_ylim([lower,upper])
+        bounds = compute_bounds(curr)
+        ax2.set_ylim([bounds[0],bounds[1]])
         color = 'tab:blue'
         ax2.plot(curr, label="Current Reading", linewidth=2.0,color=color)
         ax2.set_ylabel("Milliamperes (mA)",color=color)
         ax2.tick_params(axis="x", which="both", bottom=True, top=False, labelbottom=False)
         ax2.legend(bbox_to_anchor=[0.9, -0.1], ncol=2, loc="upper right", frameon=False)
-        # ax2.set_xlabel("Latest "+str(samples) + " samples",labelpad=10)
+        if log == 1:
+            ax2.text(0,-0.4,"Note: Data logging is enabled",size="small",transform=ax2.transAxes)
+        else:
+            ax2.text(0,-0.4,"Note: Data logging is disabled",size="small",transform=ax2.transAxes)
         title_text = "CN0548 Maximum Rating: " + v_rating[10*v_type+v_max] + " , " + c_rating[c_type]
         plt.title(title_text, fontweight="bold")
         plt.subplots_adjust(bottom=0.30)
-        if log == 1:
-            ax2.text(0,-0.3,"Your data will be logged upon closing the plot window.",size="small",transform=ax2.transAxes)
-            ax2.text(0,-0.35,"Premature termination of the program by closing the terminal will result to loss of data.",size="small",transform=ax2.transAxes)
-        
-    if mode == 1:
-        new_record.append('x - samples to retain')
-    record = open("session_record.txt","w")
-    for i in range(9):
-        record.write(str(new_record[i]))
-        if i != 8:
-            record.write("\n")
-    record.close()
-
-    ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=(1000/fs))
-    plt.show()
-    
-    if log == 1:
-        output = open(filename,'w')
-        output.write("Voltage Reading (V),Current Reading (mA)\n")
-        for i in range(len(datalog)):
-            output.write(datalog[i])
-        output.close()
-        input("\n\nData has been sucessfully logged!\n\n")
-    
 else:
     new_record.append('x - Tracking | Non-tracking')
     new_record.append('x - samples to retain')
-    record = open("session_record.txt",'w')
-    for i in range(9):
+
+if new_session == 1:
+    print("\n-Connection setup-\n")
+while True:
+    if new_session == 1 or retry == 5:
+        port = input('Input Serial line (e.g. if ADICUP3029 is connected to COM7, input \'COM7\' )\nSerial line: ')
+    else:
+        port = rec_value[9]
+        retry = retry + 1
+    try:
+        context = "serial:" + port + ",115200"
+        ad7799 = adi.ad7799(uri=context)
+        input("\nCN0548 board detected.\nPress 'enter' key to start board operation\n")
+        break
+    except:
+        print("Port not found\n")
+new_record.append(port + ' - machine-defined')
+print("Voltage readings are in volts (V) while current readings are in milliamperes (mA).")
+
+# ---- Record session config -----
+
+if new_session == 1:
+    record = open("session_record.txt","w")
+    for i in range(10):
         record.write(str(new_record[i]))
-        if i != 8:
+        if i != 9:
             record.write("\n")
     record.close()
 
+if en == 1:
+    ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys), interval=(1000/fs))
+    plt.show()
+    
+else:
     while True:
-        port = input('Input Serial line (e.g. if ADICUP3029 is connected to COM7, input \'COM7\' )\nSerial line: ')
-        try:
-            context = "serial:" + port + ",115200"
-            ad7799 = adi.ad7799(uri=context)
-            input("\nCN0548 board detected.\nPress 'enter' key to start board operation\n")
-            break
-        except:
-            print("Port not found\n")
-
-    print("Voltage reading is in terms of volts (V) and current reading is in terms of milliamperes (mA).")
-    if log == 1:
-            output = open(filename,'a')
-            output.write("Voltage Reading (V),Current Reading (mA)\n")
-            output.close()
-    while True:
-        v_reading = v_gain*ad7799.channel[2].value # get new voltage reading
-        i_reading = i_gain*ad7799.channel[0].value # get new current reading
+        v_reading = ad7799.channel[2].value*v_gain[v_max]/1000          # get new voltage reading
+        i_reading = ad7799.channel[0].value*20                          # get new current reading
         print('Voltage reading: ' + str(v_reading) + '\t\t\t' + 'Current reading: ' + str(i_reading) )
         time.sleep(1/fs)
         if log == 1:
