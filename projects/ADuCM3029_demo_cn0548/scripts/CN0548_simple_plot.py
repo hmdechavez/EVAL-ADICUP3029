@@ -380,7 +380,7 @@ if en == 1:
 
     def animate(i,volt, curr):                                      # function for animation
         v_reading = ad7799.channel[2].value*v_gain[v_max]/1000      # get new voltage reading
-        i_reading = ad7799.channel[0].value*20                      # get new current reading
+        i_reading = ad7799.channel[0].value*5                       # get new current reading
         volt.append(v_reading)  
         curr.append(i_reading)  
         print('Voltage reading: ' + str(v_reading) + '\t\t\t' + 'Current reading: ' + str(i_reading))
@@ -459,7 +459,7 @@ if en == 1:
 else:
     while True:
         v_reading = ad7799.channel[2].value*v_gain[v_max]/1000          # get new voltage reading
-        i_reading = ad7799.channel[0].value*20                          # get new current reading
+        i_reading = ad7799.channel[0].value*5                           # get new current reading
         print('Voltage reading: ' + str(v_reading) + '\t\t\t' + 'Current reading: ' + str(i_reading) )
         time.sleep(1/fs)
         if log == 1:
